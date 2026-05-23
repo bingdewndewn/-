@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>灯光控制器</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        :root {
+            --bg: #1a1a2e;
+            --panel: #16213e;
+            --key-default: #2a2a4a;
+            --key-selected: #f59e0b;
+            --key-glow: rgba(245, 158, 11, 0.4);
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --clear-red: #ef4444;
+            --border-subtle: rgba(255, 255, 255, 0.06);
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image:
+                radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.03) 0%, transparent 60%),
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(255, 255, 255, 0.008) 2px,
+                    rgba(255, 255, 255, 0.008) 4px
+                );
+        }
+        .controller {
+            background: var(--panel);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 28px 32px 24px;
+            width: 480px;
+            max-width: 96vw;
+            box-shadow:
+                0 4px 24px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .title {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: var(--text);
+        }
+        .group-switch {
+            display: flex;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .group-btn {
+            padding: 6px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            background: var(--key-default);
+            color: var(--text-muted);
+            transition: all 200ms ease;
+            font-family: inherit;
+        }
+        .group-btn:not(:last-child) {
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .group-btn.active {
+            background: var(--key-selected);
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+        .group-btn:hover:not(.active) {
+            background: #3a3a5a;
+        }
+        .grid-wrapper {
+            position: relative;
+            margin-bottom: 16px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 8px;
+        }
+        .key-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .key {
+            width: 44px;
+            height: 44px;
+            border-radius: 5px;
+            background: var(--key-default);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            transition: all 150ms ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            position: relative;
+        }
+        .key:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        .key:active {
+            transform: scale(0.95);
+        }
+        .key.selected {
+            background: var(--key-selected);
+            border-color: var(--key-selected);
+            box-shadow:
+                0 0 12px var(--key-glow),
+                0 0 24px rgba(245, 158, 11, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            transform: scale(0.95);
+        }
+        .key.selected:hover {
+            transform: scale(0.95) translateY(-1px);
+        }
+        .key-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transition: background 150ms ease;
+        }
+        .key.selected .key-indicator {
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+        }
+        .key-number {
+            font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: color 150ms ease;
+            user-select: none;
+        }
+        .key-cell.has-selected .key-number {
+            color: var(--key-selected);
+        }
+        .key.clear-key {
+            background: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.3);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--clear-red);
+            letter-spacing: 0.3px;
+        }
+        .key.clear-key:hover {
+            background: rgba(239, 68, 68, 0.22);
+            border-color: rgba(239, 68, 68, 0.5);
+            transform: translateY(-1px);
+        }
+        .key.clear-key:active {
+            transform: scale(0.95);
+        }
+        .clear-label {
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--clear-red);
+            user-select: none;
+        }
+        .export-row {
+            display: flex;
+            justify-content: center;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .export-btn {
+            padding: 10px 36px;
+            border-radius: 6px;
+            border: none;
+            background: var(--key-selected);
+            color: #1a1a2e;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 150ms ease;
+            font-family: inherit;
+            letter-spacing: 0.5px;
+        }
+        .export-btn:hover {
+            box-shadow: 0 0 16px var(--key-glow);
+            transform: translateY(-1px);
+        }
+        .export-btn:active {
+            transform: scale(0.96);
+        }
+        .export-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .selection-info {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            min-height: 18px;
+        }
+        .toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-80px);
+            background: rgba(22, 33, 62, 0.95);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: var(--text);
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 300ms ease;
+            z-index: 999;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div id="toast" class="toast"></div>
+    <div class="controller" id="controller">
+        <div class="header">
+            <div class="title">灯光控制器</div>
+            <div class="group-switch">
+                <button class="group-btn active" data-group="A" onclick="switchGroup('A')">A 组</button>
+                <button class="group-btn" data-group="B" onclick="switchGroup('B')">B 组</button>
+            </div>
+        </div>
+        <div class="grid-wrapper">
+            <div class="grid" id="keyGrid"></div>
+        </div>
+        <div class="selection-info" id="selectionInfo"></div>
+        <div class="export-row">
+            <button class="export-btn" id="exportBtn" onclick="exportImage()">导出</button>
+        </div>
+    </div>
+    <div id="exportPanel" style="position:fixed;left:-9999px;top:-9999px;"></div>
+    <script>
+        const TOTAL_KEYS = 32;
+        const COLS = 8;
+        let currentGroup = 'A';
+        let selectedKeys = { A: new Set(), B: new Set() };
+
+        function getSelectedSet() {
+            return selectedKeys[currentGroup];
+        }
+
+        function buildGrid() {
+            const grid = document.getElementById('keyGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= TOTAL_KEYS; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'key-cell';
+                cell.id = `cell-${i}`;
+
+                const key = document.createElement('div');
+                if (i === 32) {
+                    key.className = 'key clear-key';
+                    key.innerText = 'CLR';
+                } else {
+                    key.className = 'key';
+                    key.innerHTML = '<div class="key-indicator"></div>';
+                }
+                key.id = `key-${i}`;
+                key.onclick = () => toggleKey(i);
+
+                const num = document.createElement('span');
+                if (i === 32) {
+                    num.className = 'clear-label';
+                    num.textContent = 'clear';
+                } else {
+                    num.className = 'key-number';
+                    num.textContent = i;
+                }
+
+                cell.appendChild(key);
+                cell.appendChild(num);
+                grid.appendChild(cell);
+            }
+            refreshGrid();
+        }
+
+        function toggleKey(index) {
+            const set = getSelectedSet();
+            if (set.has(index)) {
+                set.delete(index);
+            } else {
+                set.add(index);
+            }
+            refreshGrid();
+        }
+
+        function refreshGrid() {
+            const set = getSelectedSet();
+            for (let i = 1; i <= TOTAL_KEYS; i++) {
+                const key = document.getElementById(`key-${i}`);
+                const cell = document.getElementById(`cell-${i}`);
+                if (!key || !cell) continue;
+                if (set.has(i)) {
+                    key.classList.add('selected');
+                    cell.classList.add('has-selected');
+                } else {
+                    key.classList.remove('selected');
+                    cell.classList.remove('has-selected');
+                }
+            }
+            updateSelectionInfo();
+        }
+
+        function updateSelectionInfo() {
+            const set = getSelectedSet();
+            const info = document.getElementById('selectionInfo');
+            if (set.size === 0) {
+                info.textContent = `${currentGroup} 组：未选择键位`;
+            } else {
+                const sorted = [...set].sort((a, b) => a - b);
+                info.textContent = `${currentGroup} 组：已选择 ${sorted.join(', ')}`;
+            }
+        }
+
+        function switchGroup(group) {
+            currentGroup = group;
+            document.querySelectorAll('.group-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.group === group);
+            });
+            refreshGrid();
+        }
+
+        function showToast(msg, duration) {
+            duration = duration || 2000;
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), duration);
+        }
+
+        async function exportImage() {
+            const set = getSelectedSet();
+            if (set.size === 0) {
+                showToast('请先选择至少一个键位');
+                return;
+            }
+            const exportBtn = document.getElementById('exportBtn');
+            exportBtn.disabled = true;
+            exportBtn.textContent = '导出中...';
+            try {
+                const panel = document.getElementById('exportPanel');
+                const cellSize = 44;
+                const gap = 8;
+                const cols = 8;
+                const rows = 4;
+                const padX = 24;
+                const padY = 20;
+                const labelH = 16;
+                const titleH = 32;
+                const gridW = cols * cellSize + (cols - 1) * gap;
+                const gridH = rows * (cellSize + labelH + 4) + (rows - 1) * gap;
+                const totalW = gridW + padX * 2;
+                const totalH = gridH + padY * 2 + titleH;
+                let html = `<div style="
+                    width:${totalW}px; height:${totalH}px;
+                    background:#ffffff;
+                    padding:${padY}px ${padX}px;
+                    font-family:'Inter',-apple-system,sans-serif;
+                    box-sizing:border-box;
+                ">`;
+                html += `<div style="
+                    font-size:14px; font-weight:600; color:#222;
+                    margin-bottom:12px; letter-spacing:0.5px;
+                ">灯光控制器 · ${currentGroup} 组</div>`;
+                html += `<div style="
+                    display:grid;
+                    grid-template-columns:repeat(8, ${cellSize}px);
+                    gap:${gap}px;
+                ">`;
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const idx = r * cols + c + 1;
+                        const isSelected = set.has(idx);
+                        const isClear = idx === 32;
+
+                        const bg = isSelected ? '#111111' : '#ffffff';
+                        const border = isSelected ? '1px solid #111' : '1px solid #d0d0d0';
+                        const numColor = isSelected ? '#111' : '#999';
+
+                        html += `<div style="
+                            display:flex; flex-direction:column; align-items:center; gap:4px;
+                        ">
+                            <div style="
+                                width:${cellSize}px; height:${cellSize}px;
+                                border-radius:5px; border:${border};
+                                background:${bg};
+                                ${isClear ? 'font-size:11px; font-weight:600; color:#ef4444;' : ''}
+                                display:flex; align-items:center; justify-content:center;
+                            ">${isClear ? 'CLR' : ''}</div>
+                            <span style="
+                                font-family:Monaco,Consolas,monospace;
+                                font-size:11px; color:${numColor}; font-weight:500;
+                            ">${isClear ? 'clear' : idx}</span>
+                        </div>`;
+                    }
+                }
+                html += '</div></div>';
+                panel.innerHTML = html;
+                await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                const canvas = await html2canvas(panel.firstElementChild, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                });
+                const link = document.createElement('a');
+                const sorted = [...set].sort((a, b) => a - b).join('-');
+                link.download = `灯光控制器_${currentGroup}组_${sorted}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                panel.innerHTML = '';
+                showToast('导出成功');
+            } catch (err) {
+                console.error('Export failed:', err);
+                showToast('导出失败，请重试');
+            } finally {
+                exportBtn.disabled = false;
+                exportBtn.textContent = '导出';
+            }
+        }
+        buildGrid();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</body>
+</html>
